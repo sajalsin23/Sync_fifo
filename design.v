@@ -1,64 +1,50 @@
-// Code your design here
-// Code your design here
-`timescale 1ns/1ps
-module fifo(clk,reset,wr_en,rd_en,din,dout,full,empty);
-  input clk,reset;
-  input wr_en,rd_en;
-  input [7:0]din;
-  output [7:0]dout;
-  output full,empty;
-  
-  reg [7:0]mem[0:15];//declaration of RAM
-  wire clk,reset;
-  wire wr_en,rd_en;
-  wire [7:0]din;
-  reg [7:0]dout;
-  wire full,empty;
-  reg [4:0]addr;
-  integer i;
-  assign full = (addr ==5'b10000) ? 1'b1 : 1'b0;
-  assign empty = (addr ==5'b00000) ? 1'b1 : 1'b0;
-  
-  always@(posedge clk)
-    begin
-      if(reset)
-        begin
-        	addr = 4'b0000;
-      		for(i=0;i<=15;i=i+1) 
-        		mem[i] = 8'b0;
+// Design Code for synchronous FIFO
+
+module Synchronous_FIFO #(
+    parameter WIDTH = 32,    // Data width
+    parameter DEPTH = 1024    // FIFO depth
+)(
+    input wire clk,
+    input wire reset,
+    input wire [WIDTH-1:0] d_in,
+    input wire w_enb,
+    input wire r_enb,
+    output reg [WIDTH-1:0] d_out,
+    output wire full,
+    output wire empty
+);
+
+// Memory and pointers
+reg [WIDTH-1:0] fifo [0:DEPTH-1];
+reg [$clog2(DEPTH)-1:0] w_ptr, r_ptr;
+reg [$clog2(DEPTH):0] count;
+
+// Reset logic
+always @(posedge clk or negedge reset) begin
+    if (!reset) begin
+        w_ptr <= 0;
+        r_ptr <= 0;
+        count <= 0;
+        d_out <= 0;
+    end else begin
+        if (w_enb && !full) begin
+            fifo[w_ptr] <= d_in;
+            w_ptr <= (w_ptr + 1) % DEPTH;
+            count <= count + 1;
         end
-      else if(wr_en | rd_en)//read or write
-        begin
-          if(wr_en && (!full))
-            begin
-            	mem[addr]=din;
-            	addr = addr + 1;
-            end
-          else
-            if(rd_en && (!empty))
-              begin
-                dout =mem[0];
-                mem[0] = mem[1];
-                mem[1] = mem[2];
-                mem[2] = mem[3];
-                mem[3] = mem[4];
-                mem[4] = mem[5];
-                mem[5] = mem[6];
-                mem[6] = mem[7];
-                mem[7] = mem[8];
-                mem[8] = mem[9];
-                mem[9] = mem[10];
-                mem[10] = mem[11];
-                mem[11] = mem[12];
-                mem[12] = mem[13];
-                mem[13] = mem[14];
-                mem[14] = mem[15];
-                mem[15] = 8'b0;
-                   addr = addr - 1;         
-                
-              end
-              
+        if (r_enb && !empty) begin
+            d_out <= fifo[r_ptr];
+            r_ptr <= (r_ptr + 1) % DEPTH;
+            count <= count - 1;
         end
       
     end
+end
+
+
+   
+// Status flags
+assign full = (count == DEPTH);
+assign empty = (count == 0);
+
 endmodule
