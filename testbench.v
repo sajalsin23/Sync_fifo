@@ -47,6 +47,18 @@ module tb_Synchronous_FIFO;
     @(posedge clk); wr_en = 0;
     $display("Write done. Full = %b", full);
 
+$display("\n--- Overflow test (write beyond full) ---");
+    @(posedge clk);
+    wr_en = 1; data_in = 32'hDEADBEEF;
+    @(posedge clk);
+    wr_en = 0;
+    if (full)
+      $display("Overflow blocked correctly (no write occurred).");
+    else
+      $display("⚠️ Overflow error: FIFO accepted data when full!");
+
+    $display("\n--- Read until EMPTY ---");
+
     // ✅ 2. Read data from FIFO
     repeat (DEPTH) begin
       @(posedge clk);
@@ -55,17 +67,34 @@ module tb_Synchronous_FIFO;
     @(posedge clk); rd_en = 0;
     $display("Read done. Empty = %b", empty);
 
+    $display("\n--- Underflow test (read beyond empty) ---");
+    @(posedge clk);
+    rd_en = 1;
+    @(posedge clk);
+    rd_en = 0;
+    if (empty)
+      $display("Underflow blocked correctly (no read occurred).");
+    else
+      $display("⚠️ Underflow error: Read occurred when FIFO was empty!");
+
+    $display("\n--- Simultaneous write/read ---");
+    data_in = 32'hAABBCCDD;
+    
     // ✅ 3. Simultaneous write & read
     @(posedge clk);
-    wr_en = 1; rd_en = 1; data_in = 32'hAABBCCDD;
+    wr_en = 1; rd_en = 1;
     @(posedge clk);
     wr_en = 0; rd_en = 0;
     $display("Simultaneous write/read tested.");
 
+    $display("\n--- Reset check ---");
     // ✅ 4. Reset check
     @(posedge clk); reset = 0;
     @(posedge clk); reset = 1;
-    $display("Reset applied. Empty = %b, Full = %b", empty, full);
+    if (empty && !full)
+      $display("Reset successful. FIFO is empty.");
+    else
+      $display("⚠️ Reset error: FIFO not cleared correctly!");
 
     #10 $finish;
   end
